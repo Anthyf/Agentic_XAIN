@@ -14,7 +14,7 @@ from dataclasses import asdict
 class ExperimentManager():
 
     """ 
-    This document is specifically for the special use of running experiments with baseline narratives only. 
+    This document is for the generation of baseline narratives and the three-chances experiment on no-baseline benchmark experiment. 
     """
 
     def __init__(
@@ -28,7 +28,7 @@ class ExperimentManager():
          ds_paths: dict,
          size_lim: int,
          num_feat: int,
-         baseline_path: str = "data/baseline_narratives.json",
+        #  baseline_path: str = "data/baseline_narratives.json",
     ):
         # Version 2: store as list of (gen, ext) pairs
         if len(generation_models) != len(extraction_models):
@@ -43,8 +43,8 @@ class ExperimentManager():
         self.ds_paths=ds_paths
         self.size_limit=size_lim
         self.num_feat=num_feat
-        self.baseline_path = baseline_path
-        self.baseline_lookup = self.load_narratives_json()
+        # self.baseline_path = baseline_path
+        # self.baseline_lookup = self.load_narratives_json()
     
 
     def sample_equal_targets(self, df):
@@ -99,21 +99,21 @@ class ExperimentManager():
 
         return sampled_test_set, ds_info, tar_model
     
-    def load_narratives_json(self):
-        """Converts the JSON list of dicts into a fast lookup dictionary."""
-        # Load Round 0 narratives from the JSON file
-        with open(self.baseline_path, 'r', encoding='utf-8') as f:
-            round0_data = json.load(f)
+    # def load_narratives_json(self):
+    #     """Converts the JSON list of dicts into a fast lookup dictionary."""
+    #     # Load Round 0 narratives from the JSON file
+    #     with open(self.baseline_path, 'r', encoding='utf-8') as f:
+    #         round0_data = json.load(f)
 
-        lookup = {}
-        for item in round0_data:
-            key = (item['dataset'], item['index'])
-            lookup[key] = item['round0_narrative']
-        return lookup
+    #     lookup = {}
+    #     for item in round0_data:
+    #         key = (item['dataset'], item['index'])
+    #         lookup[key] = item['round0_narrative']
+    #     return lookup
         
-    def get_baseline_narrative(self, dataset_name, idx):
-        """Accesses the preloaded dictionary stored in lookup"""
-        return self.baseline_lookup.get((dataset_name, idx), "No Round 0 narrative found.")
+    # def get_baseline_narrative(self, dataset_name, idx):
+    #     """Accesses the preloaded dictionary stored in lookup"""
+    #     return self.baseline_lookup.get((dataset_name, idx), "No Round 0 narrative found.")
   
 
     def run_experiments(
@@ -166,15 +166,18 @@ class ExperimentManager():
             #generate set of stories if this set has not yet been generated before
             story_generator=GenerationModel(ds_info, gen_model)
 
-            #special setting: use the baseline narratives
-            narratives = [
-                self.get_baseline_narrative(dataset, idx)
-                for idx in test_set.index
-            ]
+            # #special setting: use the baseline narratives
+            # narratives = [
+            #     self.get_baseline_narrative(dataset, idx)
+            #     for idx in test_set.index
+            # ]
 
-            # extract features and labels
+                        # extract features and labels
             x = test_set[test_set.columns[:-1]]
             y = test_set[test_set.columns[-1]]
+
+
+            narratives=story_generator.generate_stories(tar_model,x,y, prompt_type=prompt_type, num_feat=self.num_feat, manipulate=manipulate)
 
             story_generator.gen_variables(tar_model, x, y, tree=True)
             explanation_list=story_generator.explanation_list
@@ -232,75 +235,75 @@ class ExperimentManager():
     
 
 
-    def append_human(self,experiments: list[Type[NarrativeExperiment]], human_dict: dict, ext_models: list[Type[LLMWrapper]], emb_models: list):
+    # def append_human(self,experiments: list[Type[NarrativeExperiment]], human_dict: dict, ext_models: list[Type[LLMWrapper]], emb_models: list):
 
-        """
-        Given a list of experiments generated with LLMs with self.run_experiments and corresponding human written narratives, add the human narratives to the experiment as if it is just another generation model. 
-        Assumes that the human written narratives are on exactly the same datasets and instances as the LLM generated ones
+    #     """
+    #     Given a list of experiments generated with LLMs with self.run_experiments and corresponding human written narratives, add the human narratives to the experiment as if it is just another generation model. 
+    #     Assumes that the human written narratives are on exactly the same datasets and instances as the LLM generated ones
 
-        Args:
-            experiments (list): list of experiments generated with self.run_experiments
-            human_dict (dict): dictionary with the human narratives in the format {$dataset_name: {narrative_list:[...], idx_list: [...]}} for all    datasets and 
-            ext_models (list): list of wrapped extraction models to generate extractions for the human narratives
-            emb_models (list): list of wrapped embedding models to generate embeddings for the human narratives
-        Returns: 
-            list of experiments where the human narratives have been added in the same format as if they are a generation model
-        """
+    #     Args:
+    #         experiments (list): list of experiments generated with self.run_experiments
+    #         human_dict (dict): dictionary with the human narratives in the format {$dataset_name: {narrative_list:[...], idx_list: [...]}} for all    datasets and 
+    #         ext_models (list): list of wrapped extraction models to generate extractions for the human narratives
+    #         emb_models (list): list of wrapped embedding models to generate embeddings for the human narratives
+    #     Returns: 
+    #         list of experiments where the human narratives have been added in the same format as if they are a generation model
+    #     """
 
-        manual_experiments=[]
+    #     manual_experiments=[]
 
-        for ds_name, value in human_dict.items():
+    #     for ds_name, value in human_dict.items():
             
-            #Get any experiment object that matches the current dataset
-            matching_experiment=self.filter_experiments(ds_name, "long", "RF", experiments)
+    #         #Get any experiment object that matches the current dataset
+    #         matching_experiment=self.filter_experiments(ds_name, "long", "RF", experiments)
 
-            #Create a now dataclass starting from the matching experiment and overwrite several attributes
-            manual_experiment=NarrativeExperiment(**asdict(matching_experiment))
-            manual_experiment.generation_model="human"
-            manual_experiment.id=(ds_name,"RF","human","long")
-            manual_narratives=human_dict[ds_name]["narrative_list"]
+    #         #Create a now dataclass starting from the matching experiment and overwrite several attributes
+    #         manual_experiment=NarrativeExperiment(**asdict(matching_experiment))
+    #         manual_experiment.generation_model="human"
+    #         manual_experiment.id=(ds_name,"RF","human","long")
+    #         manual_narratives=human_dict[ds_name]["narrative_list"]
 
-            #Make sure that nothing went wrong and that the indices match
-            assert matching_experiment.idx_list==human_dict[ds_name]["idx_list"], "The append_human method assumes that the human and LLM indices match."
+    #         #Make sure that nothing went wrong and that the indices match
+    #         assert matching_experiment.idx_list==human_dict[ds_name]["idx_list"], "The append_human method assumes that the human and LLM indices match."
 
-            #Get the correct ds_info object for this dataset
-            _, ds_info, _ =self.dataset_extraction_tool(ds_name, "RF")
+    #         #Get the correct ds_info object for this dataset
+    #         _, ds_info, _ =self.dataset_extraction_tool(ds_name, "RF")
 
 
-            #Generate extractions
-            extractions_dict={}
-            for extr_model in ext_models:
-                feature_extractor=ExtractionModel(ds_info, extr_model)
-                extractions=feature_extractor.generate_extractions(manual_narratives)
-                extractions_dict[extr_model.model]=extractions
+    #         #Generate extractions
+    #         extractions_dict={}
+    #         for extr_model in ext_models:
+    #             feature_extractor=ExtractionModel(ds_info, extr_model)
+    #             extractions=feature_extractor.generate_extractions(manual_narratives)
+    #             extractions_dict[extr_model.model]=extractions
 
-            manual_experiment.extractions_dict=extractions_dict
+    #         manual_experiment.extractions_dict=extractions_dict
 
-            #generate embeddings 
-            embeddings_dict={}
-            for emb_model in emb_models:
-                embeddings=[emb_model.generate_embedding(narrative) for narrative in manual_narratives]
-                embeddings_dict[emb_model.model]=embeddings
+    #         #generate embeddings 
+    #         embeddings_dict={}
+    #         for emb_model in emb_models:
+    #             embeddings=[emb_model.generate_embedding(narrative) for narrative in manual_narratives]
+    #             embeddings_dict[emb_model.model]=embeddings
 
-            #overwrite the narratives, extractions and embeddings with the human ones
-            manual_experiment.embeddings_dict=embeddings_dict
-            manual_experiment.narrative_list=manual_narratives
-            manual_experiments.append(manual_experiment)
+    #         #overwrite the narratives, extractions and embeddings with the human ones
+    #         manual_experiment.embeddings_dict=embeddings_dict
+    #         manual_experiment.narrative_list=manual_narratives
+    #         manual_experiments.append(manual_experiment)
 
-        #add manual experiments to existing experiment list and save
-        experiments+=manual_experiments
+    #     #add manual experiments to existing experiment list and save
+    #     experiments+=manual_experiments
 
-        return experiments
+    #     return experiments
 
     
-    @staticmethod
-    def filter_experiments(dataset: str, prompt:str, tar_model:str, experiments: list) -> Type[NarrativeExperiment]:
+    # @staticmethod
+    # def filter_experiments(dataset: str, prompt:str, tar_model:str, experiments: list) -> Type[NarrativeExperiment]:
 
-        """Filters a list of experiments on an experiment with a particular dataset/prompt/tar_model"""
+    #     """Filters a list of experiments on an experiment with a particular dataset/prompt/tar_model"""
 
-        filtered_experiments=[experiment for experiment in experiments if (experiment.dataset==dataset) & (experiment.prompt_type==prompt) & (experiment.tar_model_name==tar_model)]
+    #     filtered_experiments=[experiment for experiment in experiments if (experiment.dataset==dataset) & (experiment.prompt_type==prompt) & (experiment.tar_model_name==tar_model)]
 
-        return filtered_experiments[0]
+    #     return filtered_experiments[0]
 
 
 

@@ -52,9 +52,9 @@ class ExperimentMetrics(NarrativeExperiment):
     value_accuracy: dict= field(default_factory=dict)
 
     #human similarity
-    embedding_distance: dict = field(default_factory=dict)
-    bleurt: dict = field(default_factory=dict)
+    # embedding_distance: dict = field(default_factory=dict)
+    # bleurt: dict = field(default_factory=dict)
 
-    #assumptions
-    perplexity_mean: dict = field(default_factory=dict)
-    perplexity_dict: dict = field(default_factory=dict)
+    # #assumptions
+    # perplexity_mean: dict = field(default_factory=dict)
+    # perplexity_dict: dict = field(default_factory=dict)

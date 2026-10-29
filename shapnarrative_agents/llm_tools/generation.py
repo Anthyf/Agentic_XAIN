@@ -122,7 +122,6 @@ class GenerationModel:
             sentence_limit: (int) Ask LLM to limit answer to this sentence limit
             prompt_type: str (short/long) We consider two prompt templates, a long and a short one, select which one to generate.
             manipulate: bool (default=False) If you pass True, then the truncated SHAP table will be manipulated at the prompt level.
-            manipulation_func: (default= full inversion) function(explanation_df, num_feat)->manipulated_explanation_df that returns a manipulated truncated table.
 
         Returns:
             prompt: (str) Prompt that is ready to be passed to an LLM
@@ -228,7 +227,6 @@ class GenerationModel:
             used for SHAP explanations, else KernelExplainer will be used.
             num_feat: (int) Number of features to keep in the truncated SHAP table left in the prompt
             manipulate: (bool) (default=False) If you pass True, then the truncated SHAP table will be manipulated at the prompt level.
-            manipulation_func: (func) function to start from explanation table and create a truncated manipulated table
 
         Returns:
             list of str: A list containing the generated narratives for each instance.

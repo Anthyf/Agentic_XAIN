@@ -35,7 +35,7 @@ def average_zero(df):
     values = df.values.flatten()
     numeric_values = values[np.isfinite(values)]
     num_zeros = np.sum(numeric_values == 0)
-    accuracy= (160-(len(numeric_values)-num_zeros)) / 160  #should be changed to 80 when 20 narratives* 4 features
+    accuracy= (80-(len(numeric_values)-num_zeros)) / 80  #should be changed to 80 when 20 narratives* 4 features
     return accuracy
 
 

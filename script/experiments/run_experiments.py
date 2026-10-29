@@ -3,7 +3,7 @@ import yaml
 import pandas as pd
 from shapnarrative_agents.llm_tools.llm_wrappers import GptApi, ClaudeApi, MistralApi,DeepSeekApi, OpenRouterAPI
 from shapnarrative_agents.llm_tools.generation import GenerationModel
-from shapnarrative_agents.experiment_management.experiment_manager_no_baseline import ExperimentManager
+from shapnarrative_agents.experiment_management.experiment_manager import ExperimentManager
 from shapnarrative_agents.experiment_management.experiment_dataclass import NarrativeExperiment
 # from shapnarrative_agents.llm_tools.embedding_wrappers import EmbedWrapper, VoyageEmbedder
 # from shapnarrative_agents.misc_tools.manipulations import full_inversion, shap_permutation
@@ -19,42 +19,44 @@ from typing import Tuple
    DEPENDING ON THE SPECIFIC EXPERIMENT MANUALLY CHANGE PATHS, MANIPULATE BOOL and MANIPULATE FUNC etc"""
 
 #PATHS
-HUMAN_NARRATIVE_PATHS="data/human_written.json"
+# HUMAN_NARRATIVE_PATHS="data/human_written.json"
 TEMP_SAVE_PATH="results/temp/latest_experiment.pkl"
 # SAVE_PATHS=["results/old_results/test_newdatasets.pkl"]
-SAVE_PATHS=[f"results/standard_experiments/experiment_{i}/experiment_8fea.pkl" for i in range(4,5)]
+# SAVE_PATHS=[f"results/standard_experiments_base/experiment_{i}/experiment.pkl" for i in range(1,4)]
+SAVE_PATHS=["results/standard_experiments_base/experiment_2/experiment.pkl"]
 # if with baseline narratives
 # BASELINE_PATH="data/baseline_narratives.json"
 
 #DEFAULT PARAMS
 SIZE_LIMIT=20
-GEN_MODEL_LIST=["deepseek-v3"]
-# GEN_MODEL_LIST=["deepseek-v3","gpt-5-chat","claude-sonnet-3.7","mistral-medium-2508","llama-3.3-70b"]
-EXT_MODEL_LIST=["deepseek-v3"]
-# EXT_MODEL_LIST=["deepseek-v3","gpt-5-chat","claude-sonnet-3.7","mistral-medium-2508","llama-3.3-70b"]
+GEN_MODEL_LIST=["claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b","deepseek-v3.2"]
+# GEN_MODEL_LIST=["deepseek-v3.2","gpt-5-chat","claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b"]
+EXT_MODEL_LIST=["claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b","deepseek-v3.2"]
 
 # EMB_MODEL_LIST=["voyage-large-2-instruct"]
-DATASET_NAMES=["diabetes","stroke","fifa","credit","student"]  #["fifa","credit","student"]
+DATASET_NAMES=["fifa","credit","student","diabetes","stroke"]  #[ "fifa","credit","student","diabetes","stroke"]
 TAR_MODEL_NAMES=["RF"]
 PROMPT_TYPES=["long"]
 # PROMPT_TYPES=["long","short"]
 
-NUM_FEAT=8
+NUM_FEAT=4
 MANIPULATE=0
-MANIPULATE_FUNC=full_inversion
+# MANIPULATE_FUNC=full_inversion
 # MANIPULATE_FUNC=shap_permutation
 APPEND_HUMAN=False
 
 #LOAD CONFIG:
 with open("config/keys.yaml", "r") as file:
     config_data = yaml.safe_load(file)
-OpenAI_API_key = config_data["API_keys"]["OpenAI"]
+# version of deepseek api, from official web, thus no specific model checkpoint; should change to open router
+# DeepSeek_API_key = config_data["API_keys"]["DeepSeek"]
+# OpenAI_API_key = config_data["API_keys"]["OpenRouter"] # OpenAI has shutdown chat-5-latest
 Llama_API_key = config_data["API_keys"]["OpenRouter"]
 Claude_API_key =config_data["API_keys"]["Claude"]
-Gemini_API_key = config_data["API_keys"]["Gemini"]
 Mistral_API_key=config_data["API_keys"]["Mistral"]
-Voyage_API_key = config_data["API_keys"]["Voyage"]
+# Voyage_API_key = config_data["API_keys"]["Voyage"]
 DeepSeek_API_key_2 = config_data["API_keys"]["OpenRouter"]
+OpenAI_API_key_AIML = config_data["API_keys"]["AIML"]
 
 #LLM PARAMS
 SYSTEM_ROLE="You are a helpful agent that writes model explanations (narratives) based on SHAP values."
@@ -64,10 +66,10 @@ EXTRACTION_TEMPERATURE=0
 
 #Generation models
 LLM_WRAPPERS={ 
-            "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
+            # "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
-            "claude-sonnet-3.7": ClaudeApi(Claude_API_key,model="claude-3-7-sonnet-20250219", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
+            # "claude-sonnet-3.7": ClaudeApi(Claude_API_key,model="claude-3-7-sonnet-20250219", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             # "gemini-2.5-flash": GoogleApi(Gemini_API_key,model="gemini-2.5-flash", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
@@ -76,9 +78,9 @@ LLM_WRAPPERS={
 # Extraction models
 EXT_WRAPPERS={
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE, temperature=EXTRACTION_TEMPERATURE), 
-            "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
+            # "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             # "claude-sonnet-3.7": ClaudeApi(Claude_API_key,model="claude-3-7-sonnet-20250219", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             # "gemini-2.5-flash": GoogleApi(Gemini_API_key,model="gemini-2.5-flash", system_role=SYSTEM_ROLE, temperature=EXTRACTION_TEMPERATURE),
@@ -141,19 +143,19 @@ if __name__ == "__main__":
             # baseline_path=args.BASELINE_PATH, 
         )
         #bool(args.WARM_START) Converts the integer 0 or 1 into a Python Boolean: False or True.
-        experiment_list=manager.run_experiments(temp_save_path=TEMP_SAVE_PATH, warm_start=bool(args.WARM_START),manipulate=bool(args.MANIPULATE), manipulation_func=MANIPULATE_FUNC)
+        experiment_list=manager.run_experiments(temp_save_path=TEMP_SAVE_PATH, warm_start=bool(args.WARM_START),manipulate=bool(args.MANIPULATE)) # manipulation_func=MANIPULATE_FUNC
 
         #ADD HUMAN WRITTEN NARRATIVES FROM DICT IN THE SAME FORMAT THE LLM EXPERIMENTS
-        if APPEND_HUMAN is True:
+        # if APPEND_HUMAN is True:
 
-            with open(HUMAN_NARRATIVE_PATHS,"r") as f:
-                human_dict=json.load(f)
-            experiment_list=manager.append_human(
-                                                 experiments=experiment_list,
-                                                 human_dict=human_dict,
-                                                 ext_models=[EXT_WRAPPERS[ext_model_name] for ext_model_name in EXT_MODEL_LIST],
-                                                #  emb_models=[EMB_WRAPPERS[emb_model_name] for emb_model_name in EMB_MODEL_LIST]
-                                                 )
+        #     with open(HUMAN_NARRATIVE_PATHS,"r") as f:
+        #         human_dict=json.load(f)
+        #     experiment_list=manager.append_human(
+        #                                          experiments=experiment_list,
+        #                                          human_dict=human_dict,
+        #                                          ext_models=[EXT_WRAPPERS[ext_model_name] for ext_model_name in EXT_MODEL_LIST],
+        #                                         #  emb_models=[EMB_WRAPPERS[emb_model_name] for emb_model_name in EMB_MODEL_LIST]
+        #                                          )
             
 
         with open(save_path, "wb") as f:
