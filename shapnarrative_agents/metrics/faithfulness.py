@@ -84,9 +84,13 @@ def compute_faithfulness(experiments: list[Type[NarrativeExperiment]])->list[Typ
                 rank_diff, sign_diff, value_diff, _, _=ExtractionModel.get_diff(extraction,explanation)
                 
                 #for display purposes it can be useful to pad them with nans
-                rank_diff+=[np.nan]*(num_feat-len(rank_diff))
-                sign_diff+=[np.nan]*(num_feat-len(sign_diff))
-                value_diff+=[np.nan]*(num_feat-len(value_diff))
+                # rank_diff+=[np.nan]*(num_feat-len(rank_diff))
+                # sign_diff+=[np.nan]*(num_feat-len(sign_diff))
+                # value_diff+=[np.nan]*(num_feat-len(value_diff))
+                #truncate to at most num_feat entries, then pad with nans up to num_feat
+                rank_diff = (rank_diff + [np.nan]*(num_feat-len(rank_diff)))[:num_feat]
+                sign_diff = (sign_diff + [np.nan]*(num_feat-len(sign_diff)))[:num_feat]
+                value_diff = (value_diff + [np.nan]*(num_feat-len(value_diff)))[:num_feat]
 
                 rank_array.append(rank_diff)
                 sign_array.append(sign_diff)

@@ -27,13 +27,11 @@ class AgenticNarrativeExperiment:
     narrative_list: list[str]
     narrator_model: str
     extractions_dict: dict[list[dict]]
-    #Add this if majority vote; if not, only keep extractions_dict
-    extractions_dict_voted: dict[list[dict]]
+    # extractions_dict_voted: dict[list[dict]]     #Add this if majority vote; if not, only keep extractions_dict
     feedback_list: list[str]
     coherence_model:str
     feedback_all_coherence: list[str] 
-    #Depends on if the faithful critic's version need llm
-    faithful_critic_model:str 
+    faithful_critic_model:str                    #Depends on if the faithful critic's version need llm
 
 
 

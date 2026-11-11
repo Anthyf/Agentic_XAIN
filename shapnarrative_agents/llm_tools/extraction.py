@@ -1,6 +1,7 @@
 import ast
+import logging
+import re
 from typing import Type, Tuple
-
 import pandas as pd
 import shap
 import numpy as np
@@ -92,31 +93,119 @@ class ExtractionModel:
 
         return prompt_string
     
+    # @staticmethod
+    # def extract_dict_from_str(extracted_str: str)->dict:
+
+    #     """
+    #     Extracts a dictionary from a string 
+
+    #     Parameters:
+    #     -----------
+    #     extracted_str : str
+    #         The answer to the extractor prompt, usually a simple dictionary in string form but could be preceded by some sentences.
+
+    #     Returns:
+    #     --------
+    #     extracted_dict: dict
+    #         A prompt for the extractor model 
+    #     """
+
+    #     start_index = extracted_str.find("{")
+    #     end_index = extracted_str.rfind("}")
+    #     dict_str = extracted_str[start_index : end_index + 1]
+
+    #     extracted_dict = ast.literal_eval(dict_str)
+
+    #     return extracted_dict
+
+    
+
     @staticmethod
-    def extract_dict_from_str(extracted_str: str)->dict:
-
+    def extract_dict_from_str(extracted_str: str) -> dict:
         """
-        Extracts a dictionary from a string 
+        Extracts a dictionary from an LLM answer string, repairing common formatting errors.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         extracted_str : str
-            The answer to the extractor prompt, usually a simple dictionary in string form but could be preceded by some sentences.
+            The LLM answer, usually a dict in string form, possibly surrounded by text.
 
-        Returns:
-        --------
-        extracted_dict: dict
-            A prompt for the extractor model 
+        Returns
+        -------
+        dict
+            The parsed dictionary, or {} if every parsing attempt fails.
         """
 
+        logger = logging.getLogger(__name__)
+        # keys whose quotes the LLM sometimes drops; edit to match your extraction schema
+        KNOWN_KEYS = ("rank", "sign", "value", "assumption")
+        
+        if not extracted_str or not extracted_str.strip():
+            logger.error("LLM output is empty or blank.")
+            return {}
+
+        extracted_str = extracted_str.strip()
+        
         start_index = extracted_str.find("{")
         end_index = extracted_str.rfind("}")
-        dict_str = extracted_str[start_index : end_index + 1]
+        if start_index == -1 or end_index == -1:
+            logger.error("No dictionary found in LLM output:\n%s", extracted_str)
+            return {}
 
-        extracted_dict = ast.literal_eval(dict_str)
+        dict_str = extracted_str[start_index:end_index + 1].strip()
 
-        return extracted_dict
-    
+        def sanitize(s: str, aggressive: bool = False) -> str:
+            # trailing commas before } or ]
+            s = re.sub(r",\s*([}\]])", r"\1", s)
+            # missing values: '"value": ,' or '"rank": }'
+            s = re.sub(r":\s*(?=[,}])", ": None", s)
+            # JSON literals -> Python literals (only in value position, so text inside strings is untouched)
+            s = re.sub(r"(:\s*)null\b", r"\1None", s)
+            s = re.sub(r"(:\s*)true\b", r"\1True", s)
+            s = re.sub(r"(:\s*)false\b", r"\1False", s)
+            # missing comma between entries:  } "key"  ->  }, "key"
+            s = re.sub(r"\}\s*(?=\")", "}, ", s)
+            # truncated output: balance braces
+            if s.count("{") > s.count("}"):
+                s += "}" * (s.count("{") - s.count("}"))
+            # known keys with missing quotes
+            keys = "|".join(KNOWN_KEYS)
+            s = re.sub(rf'(?<!")\b({keys})\b"', r'"\1"', s)           # rank"  -> "rank"
+            s = re.sub(rf'"\b({keys})\b(?!")', r'"\1"', s)            # "rank  -> "rank"
+            s = re.sub(rf"\b({keys})\b(?=\s*:)", r'"\1"', s)          # rank:  -> "rank":
+            if aggressive:
+                # bare words as values (unknown, N/A, NaN, inf, ...) -> None
+                s = re.sub(
+                    r"(:\s*)(?!None\b|True\b|False\b)[A-Za-z_][\w/]*(?=\s*[,}])",
+                    r"\1None",
+                    s,
+                )
+            return s.strip(" \n\t;")
+
+        attempts = (
+            ("raw",        lambda: ast.literal_eval(dict_str)),
+            ("json",       lambda: json.loads(dict_str)),
+            ("sanitized",  lambda: ast.literal_eval(sanitize(dict_str))),
+            ("aggressive", lambda: ast.literal_eval(sanitize(dict_str, aggressive=True))),
+        )
+
+        last_error = None
+        for name, attempt in attempts:
+            try:
+                result = attempt()
+                if isinstance(result, dict):
+                    if name != "raw":
+                        logger.warning("Parsed LLM dict using '%s' fallback.", name)
+                    return result
+            except (SyntaxError, ValueError) as e:  # json.JSONDecodeError is a ValueError
+                last_error = e
+
+        logger.error(
+            "Failed to parse LLM dictionary (%s: %s). Returning empty dict.\nRaw string:\n%s",
+            type(last_error).__name__, last_error, dict_str,
+        )
+        return {}
+
     @staticmethod
     def get_diff(extracted_dict: dict, explanation: pd.DataFrame):
 
@@ -175,7 +264,7 @@ class ExtractionModel:
 
         #also useful to get actual real rank and extracted rank lists
         real_rank=df_real["rank"].to_numpy().astype(int)
-        extracted_rank=df_extracted["rank"].to_numpy().astype(int)
+        extracted_rank = df_extracted["rank"].astype("Int64").to_numpy()
 
         
         ###STEP 2: Now account for the fact that we ignored hallucinated features previously, and add a np.inf for the difference there.  

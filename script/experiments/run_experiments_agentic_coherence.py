@@ -1,12 +1,12 @@
 import argparse
 import yaml
 import pandas as pd
-from shapnarrative_agents.llm_tools.llm_wrappers import GptApi, ClaudeApi, MistralApi,DeepSeekApi, OpenRouterAPI
+from shapnarrative_agents.llm_tools.llm_wrappers import AIMLApi, GptApi, ClaudeApi, MistralApi,DeepSeekApi, OpenRouterAPI
 import numpy as np
 import dill
 from dataclasses import dataclass
 from typing import Tuple
-from shapnarrative_agents.experiment_management.experiment_manager_vote import AgenticExperimentManager
+from shapnarrative_agents.experiment_management.experiment_manager_agentic_coherence import AgenticExperimentManager
 
 
 """THIS IS THE MAIN SCRIPT OF THE COHERENT AND COHERENT-RULE DESIGN, WITH ALL FOUR AGENTS. FOR ALL TYPES OF PARAMETERS AND COMBIANTIONS
@@ -14,19 +14,19 @@ from shapnarrative_agents.experiment_management.experiment_manager_vote import A
 
 #PATHS
 TEMP_SAVE_PATH="results/temp_agent/latest_experiment.pkl"
-SAVE_PATHS=[f"final_test.pkl" ]
+SAVE_PATHS=["results/standard_experiments_agentic_critic_coherence/experiment_1/experiment_sol.pkl"]
 BASELINE_PATH="data/baseline_narratives.json"
 
-SIZE_LIMIT=2
-#["deepseek-v3","gpt-5-chat","claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b"]
+SIZE_LIMIT=20
+#["deepseek-v3.2","gpt-5-chat","claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b"]
 # Original version, the length of each agent's LLMs should be the same
 # Ensemble version, there should be more than one models to be multiple voters of FFE. 
-NARRATOR_MODEL_LIST=["claude-sonnet-4.5"]   
-FAITHFULEVALUATOR_MODEL_LIST=["claude-sonnet-4.5", "gpt-5-chat"]    
+NARRATOR_MODEL_LIST=["gpt-6.1-sol"]   
+FAITHFULEVALUATOR_MODEL_LIST=["gpt-6.1-sol"]    
 #comment this out if using critic_no_llm version
-FAITHFULCRITIC_MODEL_LIST=["claude-sonnet-4.5"]   
-COHERENCE_MODEL_LIST=["claude-sonnet-4.5"]   
-DATASET_NAMES=["diabetes"] 
+FAITHFULCRITIC_MODEL_LIST=["gpt-6.1-sol"]   
+COHERENCE_MODEL_LIST=["gpt-6.1-sol"]   
+DATASET_NAMES=[ "fifa","credit","student","diabetes","stroke"] 
 TAR_MODEL_NAMES=["RF"]
 PROMPT_TYPES=["long"]
 
@@ -38,12 +38,14 @@ with open("config/keys.yaml", "r") as file:
     config_data = yaml.safe_load(file)
 # version of deepseek api, from official web, thus no specific model checkpoint; should change to open router
 # DeepSeek_API_key = config_data["API_keys"]["DeepSeek"]
-OpenAI_API_key = config_data["API_keys"]["OpenAI"]
+# OpenAI_API_key = config_data["API_keys"]["OpenRouter"] # OpenAI has shutdown chat-5-latest
 Llama_API_key = config_data["API_keys"]["OpenRouter"]
 Claude_API_key =config_data["API_keys"]["Claude"]
 Mistral_API_key=config_data["API_keys"]["Mistral"]
-Voyage_API_key = config_data["API_keys"]["Voyage"]
+# Voyage_API_key = config_data["API_keys"]["Voyage"]
 DeepSeek_API_key_2 = config_data["API_keys"]["OpenRouter"]
+OpenAI_API_key_AIML = config_data["API_keys"]["AIML"]
+
 
 #LLM PARAMS
 SYSTEM_ROLE_NARRATOR="You are a helpful agent that writes model explanations (narratives) based on SHAP values." 
@@ -62,7 +64,8 @@ TEMPERATURE=0
 NARRATOR_WRAPPERS={ 
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
+            "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct",system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
             "mistral-medium-2508": MistralApi(api_key=Mistral_API_key, model="mistral-medium-2508" ,system_role=SYSTEM_ROLE_NARRATOR, temperature=TEMPERATURE),
@@ -71,38 +74,41 @@ NARRATOR_WRAPPERS={
 FAITHFULEVALUATOR_WRAPPERS={
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
+            "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct",system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
             "mistral-medium-2508": MistralApi(api_key=Mistral_API_key, model="mistral-medium-2508" ,system_role=SYSTEM_ROLE_EVALUATOR, temperature=TEMPERATURE),
             }
 
-
+# comment this out if not needed
 FAITHFULCRITIC_WRAPPERS={
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
+            "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct",system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
             "mistral-medium-2508": MistralApi(api_key=Mistral_API_key, model="mistral-medium-2508" ,system_role=SYSTEM_ROLE_CRITIC, temperature=TEMPERATURE),
             }
 
-
+# comment this out if not needed
 COHERENCE_WRAPPERS={
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
-            "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
+            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
+            "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct",system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
             "mistral-medium-2508": MistralApi(api_key=Mistral_API_key, model="mistral-medium-2508" ,system_role=SYSTEM_ROLE_COHERENCE, temperature=TEMPERATURE),
             }
 
 
-
+# comment this out if not needed
 DS_PATHS={
-    # "fifa": "data/fifa_dataset",
-    # "credit": "data/credit_dataset",
-    # "student": "data/student_dataset",
+    "fifa": "data/fifa_dataset",
+    "credit": "data/credit_dataset",
+    "student": "data/student_dataset",
     "diabetes": "data/diabetes_dataset",
     "stroke": "data/stroke_dataset",
 }

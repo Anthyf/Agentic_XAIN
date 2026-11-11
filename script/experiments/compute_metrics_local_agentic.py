@@ -1,5 +1,5 @@
 import dill
-from shapnarrative_agents.metrics.faithfulness_agentic_voted import compute_faithfulness_agentic
+from shapnarrative_agents.metrics.faithfulness_agentic import compute_faithfulness_agentic
 import argparse
 
 
@@ -14,9 +14,9 @@ IN THIS SCRIPT, WE COMPUTE THE FATIFHULNESS OF THE GIVEN PICKLE FILES FROM THE E
 # EXPERIMENT_PATHS=[f"results/{experiment_dir}/experiment_{i}/experiment_worstbase.pkl" for i in range(1,N_range)]
 # SAVE_PATHS=[f"results/{experiment_dir}/experiment_{i}/metrics_worstbase.pkl" for i in range(1,N_range)]
 
-EXPERIMENT_PATHS=["final_test.pkl"]
-SAVE_PATHS=["final_test.pkl" ]
- 
+EXPERIMENT_PATHS=["results/standard_experiments_agentic_critic_coherence/experiment_1/experiment_sol.pkl"]
+SAVE_PATHS=["results/standard_experiments_agentic_critic_coherence/experiment_1/metrics_sol.pkl"]
+
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description="Generate a series of narratives and save them")
@@ -30,7 +30,7 @@ if __name__=="__main__":
         with open(experiment_path, "rb") as f:
             experiments=dill.load(f)
 
-        metrics=compute_faithfulness_agentic(experiments)
+        metrics=compute_faithfulness_agentic(experiments) 
 
         with open(save_path, "wb") as f:
             dill.dump(metrics, f)

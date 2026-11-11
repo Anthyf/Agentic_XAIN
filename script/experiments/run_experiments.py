@@ -1,7 +1,7 @@
 import argparse
 import yaml
 import pandas as pd
-from shapnarrative_agents.llm_tools.llm_wrappers import GptApi, ClaudeApi, MistralApi,DeepSeekApi, OpenRouterAPI
+from shapnarrative_agents.llm_tools.llm_wrappers import GptApi, ClaudeApi, MistralApi,DeepSeekApi, OpenRouterAPI, AIMLApi
 from shapnarrative_agents.llm_tools.generation import GenerationModel
 from shapnarrative_agents.experiment_management.experiment_manager import ExperimentManager
 from shapnarrative_agents.experiment_management.experiment_dataclass import NarrativeExperiment
@@ -23,18 +23,18 @@ from typing import Tuple
 TEMP_SAVE_PATH="results/temp/latest_experiment.pkl"
 # SAVE_PATHS=["results/old_results/test_newdatasets.pkl"]
 # SAVE_PATHS=[f"results/standard_experiments_base/experiment_{i}/experiment.pkl" for i in range(1,4)]
-SAVE_PATHS=["results/standard_experiments_base/experiment_2/experiment.pkl"]
+SAVE_PATHS=["results/standard_experiments_base/experiment_3/experiment_sol.pkl"]
 # if with baseline narratives
 # BASELINE_PATH="data/baseline_narratives.json"
 
 #DEFAULT PARAMS
 SIZE_LIMIT=20
-GEN_MODEL_LIST=["claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b","deepseek-v3.2"]
+GEN_MODEL_LIST=["gpt-6.1-sol"]
 # GEN_MODEL_LIST=["deepseek-v3.2","gpt-5-chat","claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b"]
-EXT_MODEL_LIST=["claude-sonnet-4.5","mistral-medium-2508","llama-3.3-70b","deepseek-v3.2"]
+EXT_MODEL_LIST=["gpt-6.1-sol"]
 
 # EMB_MODEL_LIST=["voyage-large-2-instruct"]
-DATASET_NAMES=["fifa","credit","student","diabetes","stroke"]  #[ "fifa","credit","student","diabetes","stroke"]
+DATASET_NAMES=["stroke","fifa","credit","student","diabetes"]  #[ "fifa","credit","student","diabetes","stroke"]
 TAR_MODEL_NAMES=["RF"]
 PROMPT_TYPES=["long"]
 # PROMPT_TYPES=["long","short"]
@@ -68,7 +68,7 @@ EXTRACTION_TEMPERATURE=0
 LLM_WRAPPERS={ 
             # "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
-            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
+            "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             # "claude-sonnet-3.7": ClaudeApi(Claude_API_key,model="claude-3-7-sonnet-20250219", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
             # "gemini-2.5-flash": GoogleApi(Gemini_API_key,model="gemini-2.5-flash", system_role=SYSTEM_ROLE, temperature=GENERATION_TEMPERATURE),
@@ -80,10 +80,10 @@ EXT_WRAPPERS={
             # "deepseek-v3": DeepSeekApi(DeepSeek_API_key,model="deepseek-chat", system_role=SYSTEM_ROLE, temperature=EXTRACTION_TEMPERATURE), 
             # "deepseek-v3": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-chat-v3-0324",system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "deepseek-v3.2": OpenRouterAPI(DeepSeek_API_key_2, model="deepseek/deepseek-v3.2-exp",system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
-            # "gpt-5-chat": GptApi(OpenAI_API_key,model="gpt-5-chat-latest", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
+           "gpt-6.1-sol": AIMLApi(OpenAI_API_key_AIML,model="openai/gpt-6.1-sol", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "claude-sonnet-4.5": ClaudeApi(Claude_API_key,model="claude-sonnet-4-5-20250929", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             # "claude-sonnet-3.7": ClaudeApi(Claude_API_key,model="claude-3-7-sonnet-20250219", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
-            # "gemini-2.5-flash": GoogleApi(Gemini_API_key,model="gemini-2.5-flash", system_role=SYSTEM_ROLE, temperature=EXTRACTION_TEMPERATURE),
+            # "gemini-2.5-flash": GoogleApi(Gemini_API_key,model="gemini-2.5-flash", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "llama-3.3-70b": OpenRouterAPI(Llama_API_key, model="meta-llama/llama-3.3-70b-instruct", system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             "mistral-medium-2508": MistralApi(api_key=Mistral_API_key, model="mistral-medium-2508" ,system_role=SYSTEM_ROLE_EXTRACTION, temperature=EXTRACTION_TEMPERATURE),
             }
