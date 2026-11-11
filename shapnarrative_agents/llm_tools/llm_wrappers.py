@@ -244,3 +244,36 @@ class DeepSeekApi(LLMWrapper):
         )
 
         return completion.choices[0].message.content
+
+
+class AIMLApi(LLMWrapper):
+
+    def __init__(
+        self,
+        api_key,
+        model="openai/gpt-6.1-sol",
+        system_role="You are a teacher, skilled at explaining complex AI decisions to general audiences.",
+        temperature=0.6,
+        base_url="https://api.aimlapi.com/v1",
+    ):
+        self.system_role = system_role
+        self.model = model
+        self.messages = []
+        self.temperature = temperature
+        self.base_url = base_url
+        self.client = OpenAI(api_key=api_key, base_url=self.base_url)
+
+    def generate_response(self, prompt):
+
+        messages = [
+            {"role": "system", "content": self.system_role},
+            {"role": "user", "content": prompt},
+        ]
+        completion = self.client.chat.completions.create(
+            model=self.model, 
+            reasoning_effort="low",  
+            messages=messages, 
+            temperature=self.temperature
+        )
+
+        return completion.choices[0].message.content

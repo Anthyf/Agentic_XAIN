@@ -52,8 +52,8 @@ class AgenticExperimentManager:
         # for example, if the narrator more has two options in the run_experiments, the evaluator should also have two. 
         if len(narrator_models) != len(faithfulevaluator_models):
             raise ValueError("For 1–1 pairing, narrator_models and faithfulevaluator_models must be the same length.")
-        # add extra critic and coherence models if they are present. faithfulcritic_models, coherence_models
-        self.model_pairs = list(zip(narrator_models, faithfulevaluator_models, faithfulcritic_models, coherence_models))   
+        # add extra critic and coherence models if they are present. 
+        self.model_pairs = list(zip(narrator_models, faithfulevaluator_models,faithfulcritic_models, coherence_models))   #faithfulcritic_models, coherence_models
         self.dataset_names = dataset_names
         self.tar_model_names = tar_model_names
         self.narrator_models=narrator_models
@@ -171,8 +171,9 @@ class AgenticExperimentManager:
         #here we didn't multiply them, because in this study we make all three models same.
         total_iterations = len(self.dataset_names) * len(self.tar_model_names) * len(self.narrator_models)* len(self.prompt_types)  
         
-        # This study is for when we make narrator, evaluator, critic model, and coherence model 1 to 1 pairs; add faithfulcritic_model into the zip if use llm; add coherence_model in if it is present
-        for index, (dataset_name, tar_model_name, (narrator_model, faithfulevaluator_model, faithfulcritic_model, coherence_model), prompt_type) in enumerate(
+        # Option 1: This study is for when we make narrator, evaluator, critic model, and coherence model 1 to 1 pairs; 
+        # add faithfulcritic_model into the zip if use llm; add coherence_model in if it is present
+        for index, (dataset_name, tar_model_name, (narrator_model, faithfulevaluator_model,faithfulcritic_model, coherence_model), prompt_type) in enumerate(
         itertools.product(self.dataset_names, self.tar_model_names, self.model_pairs, self.prompt_types)):
         
         # Option 2: This version is for when we stick to only one extraction model for all generation models (when only one extraction model)/ or we want to try all generation and extraction model combinations (when multiple extraction models)
@@ -189,19 +190,22 @@ class AgenticExperimentManager:
             prompt_generator = Prompt(ds_info=ds_info)
             narrator = NarratorAgent(narrator_model)
             
-            # This study:
+            # Option 1: This study:
             faithful_evaluator = FaithfulEvaluator(ds_info, llm=faithfulevaluator_model)
             # Option 2:
             # faithful_evaluator = FaithfulEvaluator(ds_info, llm=self.faithfulevaluator_model[0])
             
-            # This study[choose between based on llm or not]
+            # If faithful critic exists
+            # Option 1: This study[choose between based on llm or not]
             faithful_critic = FaithfulCritic(ds_info,llm=faithfulcritic_model)
             # faithful_critic = FaithfulCritic(ds_info) # if ciritic-rule version
+            
             # Option 2: [choose between based on llm or not]
             # faithful_critic = FaithfulCritic(ds_info,llm=self.faithfulcritic_models[0])
             # faithful_critic = FaithfulCritic(ds_info)
 
-            # This study:
+            # if coherence agent exists
+            # Option 1: This study:
             coherence_agent = CoherenceAgent(llm=coherence_model)
             # Option 2:
             # coherence_agent = CoherenceAgent(llm=self.coherence_models[0])
@@ -253,14 +257,14 @@ class AgenticExperimentManager:
 
                     coherence_feedback=coherence_agent.give_feedback(narrative)
                     round_coherence.append(coherence_feedback)
-                    # print(f"💬 Coherence Feedback Round {round_num}: {coherence_feedback[0:50]}...")
+                    print(f"💬 Coherence Feedback Round {round_num}: {coherence_feedback[0:50]}...")
 
                     # Comment this out when coherence agent is present
                     # if "100% faithful" in faithful_feedback.lower():
                     #     print("✅ Feedback indicates 100% faithful narrative, stopping further rounds.")
                     #     break
 
-                    narrative = narrator.generate(prompt, last_narrative=narrative, faithful_feedback=faithful_feedback, coherence_feedback=None)
+                    narrative = narrator.generate(prompt, last_narrative=narrative, faithful_feedback=faithful_feedback, coherence_feedback=coherence_feedback) # Change to none when no coherence agent
                     print(f"📝 Narrative Round {round_num + 1}")
                     round_narratives.append(narrative)
 
